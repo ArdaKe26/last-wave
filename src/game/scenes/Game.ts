@@ -1,30 +1,61 @@
-import { Scene } from 'phaser';
+import { GameObjects, Input, Physics, Scene, Math as PhaserMath } from "phaser";
+import { PLAYER, GAME_WIDTH, GAME_HEIGHT } from "../../constants";
 
-export class Game extends Scene
-{
-    constructor ()
-    {
-        super('Game');
+const { SIZE, COLOR, SPEED } = PLAYER;
+
+export class Game extends Scene {
+  private player!: GameObjects.Rectangle;
+  private wKey!: Input.Keyboard.Key;
+  private aKey!: Input.Keyboard.Key;
+  private sKey!: Input.Keyboard.Key;
+  private dKey!: Input.Keyboard.Key;
+
+  constructor() {
+    super("Game");
+  }
+
+  preload() {}
+
+  create() {
+    this.player = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      SIZE,
+      SIZE,
+      COLOR,
+    );
+
+    this.physics.add.existing(this.player);
+
+    const body = this.player.body as Physics.Arcade.Body;
+    body.setCollideWorldBounds(true);
+
+    this.wKey = this.input.keyboard!.addKey("W");
+    this.aKey = this.input.keyboard!.addKey("A");
+    this.sKey = this.input.keyboard!.addKey("S");
+    this.dKey = this.input.keyboard!.addKey("D");
+  }
+
+  update(time: number, delta: number): void {
+    let x = 0;
+    let y = 0;
+
+    if (this.aKey.isDown) {
+      x -= 1;
+    }
+    if (this.dKey.isDown) {
+      x += 1;
+    }
+    if (this.wKey.isDown) {
+      y -= 1;
+    }
+    if (this.sKey.isDown) {
+      y += 1;
     }
 
-    preload ()
-    {
-        this.load.setPath('assets');
-        
-        this.load.image('background', 'bg.png');
-        this.load.image('logo', 'logo.png');
-    }
+    const direction = new PhaserMath.Vector2(x, y).normalize();
 
-    create ()
-    {
-        
-        this.add.image(512, 384, 'background');
-        this.add.image(512, 350, 'logo').setDepth(100);
-        this.add.text(512, 490, 'Make something fun!\nand share it with us:\nsupport@phaser.io', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5).setDepth(100);
-        
-    }
+    const body = this.player.body as Physics.Arcade.Body;
+    body.setVelocity(direction.x * SPEED, direction.y * SPEED);
+  }
 }
