@@ -9,7 +9,7 @@ import {
   MATERIALS,
 } from "../../constants";
 
-const { SIZE, COLOR, SPEED } = PLAYER;
+const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
 const {
   ENEMY_SIZE,
   ENEMY_COLOR,
@@ -18,6 +18,7 @@ const {
   ENEMY_SPAWN_INTERVAL_MS,
   ENEMY_HEALTH,
   ENEMY_HEALTH_DATA_NAME,
+  ENEMY_DAMAGE,
 } = ENEMY;
 const { RANGE, FIRE_INTERVAL_MS, DAMAGE } = WEAPON;
 const { BULLET_COLOR, BULLET_SIZE, BULLET_SPEED } = BULLET;
@@ -29,11 +30,16 @@ export class Game extends Scene {
   private bullets!: Physics.Arcade.Group;
   private materials!: Physics.Arcade.Group;
   private materialText!: GameObjects.Text;
+  private healthText!: GameObjects.Text;
+  private gameOverText!: GameObjects.Text;
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
   private sKey!: Input.Keyboard.Key;
   private dKey!: Input.Keyboard.Key;
+
+  private playerHealth = MAX_HEALTH;
+  private invulnerableUntil = 0;
 
   private materialCount = 0;
 
@@ -44,6 +50,11 @@ export class Game extends Scene {
   preload() {}
 
   create() {
+    this.playerHealth = MAX_HEALTH;
+    this.materialCount = 0;
+    this.invulnerableUntil = 0;
+    this.time.paused = false;
+
     this.player = this.add.rectangle(
       GAME_WIDTH / 2,
       GAME_HEIGHT / 2,
@@ -57,6 +68,10 @@ export class Game extends Scene {
     this.materials = this.physics.add.group();
 
     this.materialText = this.add.text(16, 16, "Materials: 0", {
+      fontSize: 24,
+      color: "#ffffff",
+    });
+    this.healthText = this.add.text(16, 48, "Health: " + MAX_HEALTH, {
       fontSize: 24,
       color: "#ffffff",
     });
@@ -117,6 +132,28 @@ export class Game extends Scene {
         material.destroy();
       },
     );
+
+    this.physics.add.overlap(this.player, this.enemies, () => {
+      if (this.time.now < this.invulnerableUntil) {
+        return;
+      }
+
+      this.playerHealth -= ENEMY_DAMAGE;
+
+      this.invulnerableUntil = this.time.now + INVULNERABLE_MS;
+
+      this.healthText.setText("Health: " + this.playerHealth);
+
+      this.player.setFillStyle(0xff0000);
+
+      this.time.delayedCall(INVULNERABLE_MS, () => {
+        this.player.setFillStyle(COLOR);
+      });
+
+      if (this.playerHealth <= 0) {
+        this.gameOver();
+      }
+    });
   }
 
   update(time: number, delta: number): void {
@@ -264,5 +301,19 @@ export class Game extends Scene {
     );
 
     this.materials.add(material);
+  }
+
+  private gameOver() {
+    this.physics.pause();
+    this.time.paused = true;
+
+    this.gameOverText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "GAME OVER\nPress R to restart", {
+        fontSize: 48,
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+
+    this.input.keyboard!.once("keydown-R", () => this.scene.restart());
   }
 }

@@ -2,6 +2,8 @@ export const PLAYER = {
   SIZE: 32,
   COLOR: 0xffffff,
   SPEED: 200,
+  MAX_HEALTH: 10,
+  INVULNERABLE_MS: 500,
 };
 
 export const ENEMY = {
@@ -12,6 +14,7 @@ export const ENEMY = {
   ENEMY_MIN_SPAWN_DISTANCE: 200,
   ENEMY_HEALTH: 4,
   ENEMY_HEALTH_DATA_NAME: "health",
+  ENEMY_DAMAGE: 2,
 };
 
 export const WEAPON = {
