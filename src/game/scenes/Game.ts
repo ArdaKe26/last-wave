@@ -1,10 +1,31 @@
 import { GameObjects, Input, Physics, Scene, Math as PhaserMath } from "phaser";
-import { PLAYER, GAME_WIDTH, GAME_HEIGHT } from "../../constants";
+import {
+  PLAYER,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  ENEMY,
+  WEAPON,
+  BULLET,
+} from "../../constants";
 
 const { SIZE, COLOR, SPEED } = PLAYER;
+const {
+  ENEMY_SIZE,
+  ENEMY_COLOR,
+  ENEMY_SPEED,
+  ENEMY_MIN_SPAWN_DISTANCE,
+  ENEMY_SPAWN_INTERVAL_MS,
+  ENEMY_HEALTH,
+  ENEMY_HEALTH_DATA_NAME,
+} = ENEMY;
+const { RANGE, FIRE_INTERVAL_MS, DAMAGE } = WEAPON;
+const { BULLET_COLOR, BULLET_SIZE, BULLET_SPEED } = BULLET;
 
 export class Game extends Scene {
   private player!: GameObjects.Rectangle;
+  private enemies!: Physics.Arcade.Group;
+  private bullets!: Physics.Arcade.Group;
+
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
   private sKey!: Input.Keyboard.Key;
@@ -25,6 +46,21 @@ export class Game extends Scene {
       COLOR,
     );
 
+    this.enemies = this.physics.add.group();
+    this.bullets = this.physics.add.group();
+
+    this.time.addEvent({
+      delay: ENEMY_SPAWN_INTERVAL_MS,
+      loop: true,
+      callback: () => this.spawnEnemy(),
+    });
+
+    this.time.addEvent({
+      delay: FIRE_INTERVAL_MS,
+      loop: true,
+      callback: () => this.shoot(),
+    });
+
     this.physics.add.existing(this.player);
 
     const body = this.player.body as Physics.Arcade.Body;
@@ -34,6 +70,25 @@ export class Game extends Scene {
     this.aKey = this.input.keyboard!.addKey("A");
     this.sKey = this.input.keyboard!.addKey("S");
     this.dKey = this.input.keyboard!.addKey("D");
+
+    this.physics.add.collider(this.enemies, this.enemies);
+
+    this.physics.add.overlap(
+      this.bullets,
+      this.enemies,
+      (bulletObj, enemyObj) => {
+        const bullet = bulletObj as GameObjects.Rectangle;
+        const enemy = enemyObj as GameObjects.Rectangle;
+        bullet.destroy();
+
+        const health = enemy.getData(ENEMY_HEALTH_DATA_NAME) - DAMAGE;
+        enemy.setData(ENEMY_HEALTH_DATA_NAME, health);
+
+        if (enemy.getData(ENEMY_HEALTH_DATA_NAME) <= 0) {
+          enemy.destroy();
+        }
+      },
+    );
   }
 
   update(time: number, delta: number): void {
@@ -57,5 +112,117 @@ export class Game extends Scene {
 
     const body = this.player.body as Physics.Arcade.Body;
     body.setVelocity(direction.x * SPEED, direction.y * SPEED);
+
+    for (const child of this.enemies.getChildren()) {
+      const enemy = child as GameObjects.Rectangle;
+
+      const targetVector = new PhaserMath.Vector2(
+        this.player.x - enemy.x,
+        this.player.y - enemy.y,
+      ).normalize();
+
+      const body = enemy.body as Physics.Arcade.Body;
+
+      body.setVelocity(
+        targetVector.x * ENEMY_SPEED,
+        targetVector.y * ENEMY_SPEED,
+      );
+    }
+
+    for (const child of this.bullets.getChildren()) {
+      const bullet = child as GameObjects.Rectangle;
+
+      if (
+        bullet.x < 0 ||
+        bullet.x > GAME_WIDTH ||
+        bullet.y < 0 ||
+        bullet.y > GAME_HEIGHT
+      ) {
+        bullet.destroy();
+      }
+    }
+  }
+
+  private spawnEnemy() {
+    const spawnX = PhaserMath.Between(0, GAME_WIDTH);
+    const spawnY = PhaserMath.Between(0, GAME_HEIGHT);
+
+    const distance = PhaserMath.Distance.Between(
+      spawnX,
+      spawnY,
+      this.player.x,
+      this.player.y,
+    );
+    if (distance < ENEMY_MIN_SPAWN_DISTANCE) {
+      return;
+    }
+
+    const enemy = this.add.rectangle(
+      spawnX,
+      spawnY,
+      ENEMY_SIZE,
+      ENEMY_SIZE,
+      ENEMY_COLOR,
+    );
+
+    this.enemies.add(enemy);
+
+    enemy.setData(ENEMY_HEALTH_DATA_NAME, ENEMY_HEALTH);
+
+    const body = enemy.body as Physics.Arcade.Body;
+    body.setCollideWorldBounds(true);
+  }
+
+  private findNearestEnemy() {
+    let nearest: GameObjects.Rectangle | null = null;
+    let nearestDistance = RANGE;
+
+    for (const child of this.enemies.getChildren()) {
+      const enemy = child as GameObjects.Rectangle;
+
+      const distanceToPlayer = PhaserMath.Distance.Between(
+        enemy.x,
+        enemy.y,
+        this.player.x,
+        this.player.y,
+      );
+
+      if (distanceToPlayer < nearestDistance) {
+        nearestDistance = distanceToPlayer;
+        nearest = enemy;
+      }
+    }
+
+    return nearest;
+  }
+
+  private shoot() {
+    const nearestEnemy = this.findNearestEnemy();
+
+    if (nearestEnemy === null) {
+      return;
+    }
+
+    const bullet = this.add.rectangle(
+      this.player.x,
+      this.player.y,
+      BULLET_SIZE,
+      BULLET_SIZE,
+      BULLET_COLOR,
+    );
+
+    this.bullets.add(bullet);
+
+    const body = bullet.body as Physics.Arcade.Body;
+
+    const bulletDirection = new PhaserMath.Vector2(
+      nearestEnemy.x - this.player.x,
+      nearestEnemy.y - this.player.y,
+    ).normalize();
+
+    body.setVelocity(
+      bulletDirection.x * BULLET_SPEED,
+      bulletDirection.y * BULLET_SPEED,
+    );
   }
 }
