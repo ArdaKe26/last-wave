@@ -26,5 +26,11 @@ export const BULLET = {
   BULLET_SPEED: 400,
 };
 
+export const MATERIALS = {
+  MATERIAL_SIZE: 10,
+  MATERIAL_COLOR: 0x44ff44,
+  MATERIAL_VALUE: 1,
+};
+
 export const GAME_WIDTH = 1024;
 export const GAME_HEIGHT = 768;

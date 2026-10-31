@@ -6,6 +6,7 @@ import {
   ENEMY,
   WEAPON,
   BULLET,
+  MATERIALS,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED } = PLAYER;
@@ -20,16 +21,21 @@ const {
 } = ENEMY;
 const { RANGE, FIRE_INTERVAL_MS, DAMAGE } = WEAPON;
 const { BULLET_COLOR, BULLET_SIZE, BULLET_SPEED } = BULLET;
+const { MATERIAL_COLOR, MATERIAL_SIZE, MATERIAL_VALUE } = MATERIALS;
 
 export class Game extends Scene {
   private player!: GameObjects.Rectangle;
   private enemies!: Physics.Arcade.Group;
   private bullets!: Physics.Arcade.Group;
+  private materials!: Physics.Arcade.Group;
+  private materialText!: GameObjects.Text;
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
   private sKey!: Input.Keyboard.Key;
   private dKey!: Input.Keyboard.Key;
+
+  private materialCount = 0;
 
   constructor() {
     super("Game");
@@ -48,6 +54,12 @@ export class Game extends Scene {
 
     this.enemies = this.physics.add.group();
     this.bullets = this.physics.add.group();
+    this.materials = this.physics.add.group();
+
+    this.materialText = this.add.text(16, 16, "Materials: 0", {
+      fontSize: 24,
+      color: "#ffffff",
+    });
 
     this.time.addEvent({
       delay: ENEMY_SPAWN_INTERVAL_MS,
@@ -85,8 +97,24 @@ export class Game extends Scene {
         enemy.setData(ENEMY_HEALTH_DATA_NAME, health);
 
         if (enemy.getData(ENEMY_HEALTH_DATA_NAME) <= 0) {
+          this.dropMaterial(enemy.x, enemy.y);
+
           enemy.destroy();
         }
+      },
+    );
+
+    this.physics.add.overlap(
+      this.player,
+      this.materials,
+      (playerObj, materialObj) => {
+        const material = materialObj as GameObjects.Rectangle;
+
+        this.materialCount += MATERIAL_VALUE;
+
+        this.materialText.setText("Materials: " + this.materialCount);
+
+        material.destroy();
       },
     );
   }
@@ -224,5 +252,17 @@ export class Game extends Scene {
       bulletDirection.x * BULLET_SPEED,
       bulletDirection.y * BULLET_SPEED,
     );
+  }
+
+  private dropMaterial(x: number, y: number) {
+    const material = this.add.rectangle(
+      x,
+      y,
+      MATERIAL_SIZE,
+      MATERIAL_SIZE,
+      MATERIAL_COLOR,
+    );
+
+    this.materials.add(material);
   }
 }
