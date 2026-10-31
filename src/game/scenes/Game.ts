@@ -1,4 +1,11 @@
-import { GameObjects, Input, Physics, Scene, Math as PhaserMath } from "phaser";
+import {
+  GameObjects,
+  Input,
+  Physics,
+  Scene,
+  Math as PhaserMath,
+  Time,
+} from "phaser";
 import {
   PLAYER,
   GAME_WIDTH,
@@ -24,7 +31,14 @@ const {
 const { RANGE, FIRE_INTERVAL_MS, DAMAGE } = WEAPON;
 const { BULLET_COLOR, BULLET_SIZE, BULLET_SPEED } = BULLET;
 const { MATERIAL_COLOR, MATERIAL_SIZE, MATERIAL_VALUE } = MATERIALS;
-const { BASE_DURATION } = WAVE;
+const {
+  BASE_DURATION,
+  DURATION_INCREASE_S,
+  ENEMY_HEALTH_PER_WAVE,
+  MAX_DURATION_S,
+  SPAWN_INTERVAL_MULTIPLIER,
+  MIN_SPAWN_INTERVAL,
+} = WAVE;
 
 export class Game extends Scene {
   private player!: GameObjects.Rectangle;
@@ -36,6 +50,7 @@ export class Game extends Scene {
   private gameOverText!: GameObjects.Text;
   private waveText!: GameObjects.Text;
   private waveEndText!: GameObjects.Text;
+  private spawnTimer!: Time.TimerEvent;
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
@@ -91,13 +106,6 @@ export class Game extends Scene {
       fontSize: 24,
       color: "#ffffff",
     });
-
-    this.time.addEvent({
-      delay: ENEMY_SPAWN_INTERVAL_MS,
-      loop: true,
-      callback: () => this.spawnEnemy(),
-    });
-
     this.time.addEvent({
       delay: FIRE_INTERVAL_MS,
       loop: true,
@@ -107,6 +115,13 @@ export class Game extends Scene {
       delay: 1000,
       loop: true,
       callback: () => this.tickWaveTimer(),
+    });
+    this.spawnTimer = this.time.addEvent({
+      delay: this.getSpawnInterval(),
+      loop: true,
+      callback: () => {
+        this.spawnEnemy();
+      },
     });
 
     this.physics.add.existing(this.player);
@@ -253,7 +268,7 @@ export class Game extends Scene {
 
     this.enemies.add(enemy);
 
-    enemy.setData(ENEMY_HEALTH_DATA_NAME, ENEMY_HEALTH);
+    enemy.setData(ENEMY_HEALTH_DATA_NAME, this.getEnemyHealth());
 
     const body = enemy.body as Physics.Arcade.Body;
     body.setCollideWorldBounds(true);
@@ -350,13 +365,13 @@ export class Game extends Scene {
         GAME_WIDTH / 2,
         GAME_HEIGHT / 2,
         "Wave " + this.wave + " completed!\nPress SPACE for the next vawe",
-        { fontSize: 24, color: "#ffffff " },
+        { fontSize: 24, color: "#ffffff" },
       )
       .setOrigin(0.5);
 
     this.input.keyboard!.once("keydown-SPACE", () => {
       this.wave += 1;
-      this.waveTimeLeft = BASE_DURATION;
+      this.waveTimeLeft = this.getWaveDuration();
       this.waveEndText.destroy(true);
       this.waveText.setText("Wave " + this.wave + " - " + this.waveTimeLeft);
       this.physics.resume();
@@ -364,6 +379,14 @@ export class Game extends Scene {
       this.player.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
       this.playerHealth = MAX_HEALTH;
       this.healthText.setText("Health: " + this.playerHealth);
+      this.spawnTimer.remove();
+      this.spawnTimer = this.time.addEvent({
+        delay: this.getSpawnInterval(),
+        loop: true,
+        callback: () => {
+          this.spawnEnemy();
+        },
+      });
     });
   }
 
@@ -374,5 +397,24 @@ export class Game extends Scene {
     if (this.waveTimeLeft <= 0) {
       this.endWave();
     }
+  }
+
+  private getWaveDuration() {
+    return Math.min(
+      BASE_DURATION + (this.wave - 1) * DURATION_INCREASE_S,
+      MAX_DURATION_S,
+    );
+  }
+
+  private getSpawnInterval() {
+    return Math.max(
+      ENEMY_SPAWN_INTERVAL_MS *
+        Math.pow(SPAWN_INTERVAL_MULTIPLIER, this.wave - 1),
+      MIN_SPAWN_INTERVAL,
+    );
+  }
+
+  private getEnemyHealth() {
+    return ENEMY_HEALTH + (this.wave - 1) * ENEMY_HEALTH_PER_WAVE;
   }
 }
