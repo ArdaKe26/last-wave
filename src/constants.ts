@@ -35,5 +35,9 @@ export const MATERIALS = {
   MATERIAL_VALUE: 1,
 };
 
+export const WAVE = {
+  BASE_DURATION: 20,
+};
+
 export const GAME_WIDTH = 1024;
 export const GAME_HEIGHT = 768;

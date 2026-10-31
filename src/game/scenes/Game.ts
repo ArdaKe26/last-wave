@@ -7,6 +7,7 @@ import {
   WEAPON,
   BULLET,
   MATERIALS,
+  WAVE,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -23,6 +24,7 @@ const {
 const { RANGE, FIRE_INTERVAL_MS, DAMAGE } = WEAPON;
 const { BULLET_COLOR, BULLET_SIZE, BULLET_SPEED } = BULLET;
 const { MATERIAL_COLOR, MATERIAL_SIZE, MATERIAL_VALUE } = MATERIALS;
+const { BASE_DURATION } = WAVE;
 
 export class Game extends Scene {
   private player!: GameObjects.Rectangle;
@@ -32,6 +34,8 @@ export class Game extends Scene {
   private materialText!: GameObjects.Text;
   private healthText!: GameObjects.Text;
   private gameOverText!: GameObjects.Text;
+  private waveText!: GameObjects.Text;
+  private waveEndText!: GameObjects.Text;
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
@@ -42,6 +46,8 @@ export class Game extends Scene {
   private invulnerableUntil = 0;
 
   private materialCount = 0;
+  private wave = 1;
+  private waveTimeLeft = BASE_DURATION;
 
   constructor() {
     super("Game");
@@ -54,6 +60,8 @@ export class Game extends Scene {
     this.materialCount = 0;
     this.invulnerableUntil = 0;
     this.time.paused = false;
+    this.wave = 1;
+    this.waveTimeLeft = BASE_DURATION;
 
     this.player = this.add.rectangle(
       GAME_WIDTH / 2,
@@ -67,6 +75,14 @@ export class Game extends Scene {
     this.bullets = this.physics.add.group();
     this.materials = this.physics.add.group();
 
+    this.waveText = this.add
+      .text(
+        GAME_WIDTH / 2,
+        30,
+        "Wave " + this.wave + " - " + this.waveTimeLeft,
+        { fontSize: 24, color: "#ffffff" },
+      )
+      .setOrigin(0.5);
     this.materialText = this.add.text(16, 16, "Materials: 0", {
       fontSize: 24,
       color: "#ffffff",
@@ -86,6 +102,11 @@ export class Game extends Scene {
       delay: FIRE_INTERVAL_MS,
       loop: true,
       callback: () => this.shoot(),
+    });
+    this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => this.tickWaveTimer(),
     });
 
     this.physics.add.existing(this.player);
@@ -315,5 +336,43 @@ export class Game extends Scene {
       .setOrigin(0.5);
 
     this.input.keyboard!.once("keydown-R", () => this.scene.restart());
+  }
+
+  private endWave() {
+    this.bullets.clear(true, true);
+    this.enemies.clear(true, true);
+
+    this.physics.pause();
+    this.time.paused = true;
+
+    this.waveEndText = this.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2,
+        "Wave " + this.wave + " completed!\nPress SPACE for the next vawe",
+        { fontSize: 24, color: "#ffffff " },
+      )
+      .setOrigin(0.5);
+
+    this.input.keyboard!.once("keydown-SPACE", () => {
+      this.wave += 1;
+      this.waveTimeLeft = BASE_DURATION;
+      this.waveEndText.destroy(true);
+      this.waveText.setText("Wave " + this.wave + " - " + this.waveTimeLeft);
+      this.physics.resume();
+      this.time.paused = false;
+      this.player.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+      this.playerHealth = MAX_HEALTH;
+      this.healthText.setText("Health: " + this.playerHealth);
+    });
+  }
+
+  private tickWaveTimer() {
+    this.waveTimeLeft -= 1;
+    this.waveText.setText("Wave " + this.wave + " - " + this.waveTimeLeft);
+
+    if (this.waveTimeLeft <= 0) {
+      this.endWave();
+    }
   }
 }
