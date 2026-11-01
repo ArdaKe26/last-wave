@@ -19,6 +19,7 @@ import {
   WEAPON_TYPES,
   SHOP,
   HEALTH_BAR,
+  XP,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -59,6 +60,18 @@ const {
   HEALTH_BAR_FILL_WIDTH,
   FILL_COLOR_BG,
 } = HEALTH_BAR;
+const {
+  BASE_TO_LEVEL,
+  INCREASE_PER_LEVEL,
+  PER_MATERIAL,
+  XP_BAR_BG_HEIGHT,
+  XP_BAR_BG_WIDTH,
+  XP_BAR_FILL_HEIGHT,
+  XP_BAR_FILL_WIDTH,
+  XP_BG_COLOR,
+  XP_FILL_COLOR,
+  XP_FILL_COLOR_BG,
+} = XP;
 
 type OwnedWeapon = {
   type: WeaponType;
@@ -69,6 +82,9 @@ export class Game extends Scene {
   private healthBarBg!: GameObjects.Rectangle;
   private healthBarFill!: GameObjects.Rectangle;
   private healthBarFillBg!: GameObjects.Rectangle;
+  private xpBarBg!: GameObjects.Rectangle;
+  private xpBarFill!: GameObjects.Rectangle;
+  private xpBarFillBg!: GameObjects.Rectangle;
   private enemies!: Physics.Arcade.Group;
   private bullets!: Physics.Arcade.Group;
   private materials!: Physics.Arcade.Group;
@@ -85,6 +101,7 @@ export class Game extends Scene {
 
   private materialText!: GameObjects.Text;
   private healthText!: GameObjects.Text;
+  private xpText!: GameObjects.Text;
   private gameOverText!: GameObjects.Text;
   private waveText!: GameObjects.Text;
   private buttonText!: GameObjects.Text;
@@ -103,6 +120,9 @@ export class Game extends Scene {
   private wave = 1;
   private waveTimeLeft = BASE_DURATION;
   private rerollCost = 0;
+  private level = 1;
+  private xp = 0;
+  private pendingLevelUps = 0;
 
   constructor() {
     super("Game");
@@ -121,6 +141,9 @@ export class Game extends Scene {
     this.time.paused = false;
     this.wave = 1;
     this.waveTimeLeft = BASE_DURATION;
+    this.level = 1;
+    this.xp = 0;
+    this.pendingLevelUps = 0;
 
     this.weapons = [{ type: WEAPON_TYPES[1], nextFireTime: 0 }];
 
@@ -182,6 +205,33 @@ export class Game extends Scene {
 
     this.updateHealthUI();
 
+    this.xpBarBg = this.add
+      .rectangle(16, 74, XP_BAR_BG_WIDTH, XP_BAR_BG_HEIGHT, XP_BG_COLOR)
+      .setOrigin(0, 0);
+    this.xpBarFillBg = this.add
+      .rectangle(
+        18,
+        76,
+        XP_BAR_FILL_WIDTH,
+        XP_BAR_FILL_HEIGHT,
+        XP_FILL_COLOR_BG,
+      )
+      .setOrigin(0, 0);
+    this.xpBarFill = this.add
+      .rectangle(18, 76, XP_BAR_FILL_WIDTH, XP_BAR_FILL_HEIGHT, XP_FILL_COLOR)
+      .setOrigin(0, 0);
+
+    this.xpText = this.add
+      .text(
+        16 + XP_BAR_BG_WIDTH / 2,
+        74 + XP_BAR_BG_HEIGHT / 2,
+        "Lv " + this.level,
+        { fontSize: 14, color: "#ffffff" },
+      )
+      .setOrigin(0.5);
+
+    this.updateXpUI();
+
     this.time.addEvent({
       delay: 1000,
       loop: true,
@@ -239,6 +289,8 @@ export class Game extends Scene {
         this.materialText.setText("Materials: " + this.materialCount);
 
         material.destroy();
+
+        this.addXp(PER_MATERIAL);
       },
     );
 
@@ -738,5 +790,25 @@ export class Game extends Scene {
   private updateHealthUI() {
     this.healthBarFill.scaleX = Math.max(0, this.playerHealth) / this.maxHealth;
     this.healthText.setText(this.playerHealth + "/" + this.maxHealth);
+  }
+
+  private getXpToNextLevel() {
+    return BASE_TO_LEVEL + (this.level - 1) * INCREASE_PER_LEVEL;
+  }
+
+  private addXp(amount: number) {
+    this.xp += amount;
+    this.updateXpUI();
+    while (this.xp >= this.getXpToNextLevel()) {
+      this.xp -= this.getXpToNextLevel();
+
+      this.level += 1;
+      this.pendingLevelUps += 1;
+    }
+  }
+
+  private updateXpUI() {
+    this.xpBarFill.scaleX = this.xp / this.getXpToNextLevel();
+    this.xpText.setText("Lv " + this.level);
   }
 }
