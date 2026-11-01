@@ -17,7 +17,7 @@ import {
   WAVE,
   WeaponType,
   WEAPON_TYPES,
-  CARD,
+  SHOP,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -42,7 +42,13 @@ const {
   SPAWN_INTERVAL_MULTIPLIER,
   MIN_SPAWN_INTERVAL,
 } = WAVE;
-const { CARD_COLOR, CARD_HEIGHT, CARD_WIDTH } = CARD;
+const {
+  CARD_COLOR,
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  REROLL_BASE_COST,
+  SELL_MULTIPLIER,
+} = SHOP;
 
 type OwnedWeapon = {
   type: WeaponType;
@@ -56,6 +62,8 @@ export class Game extends Scene {
   private spawnTimer!: Time.TimerEvent;
   private weapons: OwnedWeapon[] = [];
   private shopObjects: GameObjects.GameObject[] = [];
+  private offerObjects: GameObjects.GameObject[] = [];
+  private ownedWeaponObjects: GameObjects.GameObject[] = [];
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
@@ -69,7 +77,7 @@ export class Game extends Scene {
   private buttonText!: GameObjects.Text;
   private shopText!: GameObjects.Text;
   private shopMessageText!: GameObjects.Text;
-  private weaponsText!: GameObjects.Text;
+  private rerollText!: GameObjects.Text;
 
   private playerHealth = MAX_HEALTH;
   private invulnerableUntil = 0;
@@ -77,6 +85,7 @@ export class Game extends Scene {
   private materialCount = 0;
   private wave = 1;
   private waveTimeLeft = BASE_DURATION;
+  private rerollCost = 0;
 
   constructor() {
     super("Game");
@@ -443,6 +452,101 @@ export class Game extends Scene {
       })
       .setOrigin(0.5);
 
+    this.showOffers();
+
+    const button = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT - 80,
+      200,
+      60,
+      0x44aa44,
+    );
+    button.setInteractive();
+    button.on("pointerdown", () => this.closeShop());
+
+    this.buttonText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 80, "Next Wave", {
+        fontSize: 28,
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+
+    this.showOwnedWeapons();
+
+    this.shopMessageText = this.add
+      .text(GAME_WIDTH - 200, GAME_HEIGHT - 40, "", {
+        fontSize: 20,
+        color: "#ff0000",
+      })
+      .setOrigin(0.5);
+
+    this.rerollCost = REROLL_BASE_COST;
+
+    const rerollButton = this.add
+      .rectangle(GAME_WIDTH - 150, 190, 200, 60, 0x333333)
+      .setOrigin(0.5);
+    this.rerollText = this.add
+      .text(GAME_WIDTH - 150, 190, "Reroll: (" + this.rerollCost + ")", {
+        fontSize: 24,
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+    rerollButton.setInteractive();
+    rerollButton.on("pointerdown", () => this.reroll());
+
+    this.shopObjects.push(
+      this.shopText,
+      this.buttonText,
+      button,
+      this.shopMessageText,
+      rerollButton,
+      this.rerollText,
+    );
+  }
+
+  private closeShop() {
+    for (const obj of this.shopObjects) {
+      obj.destroy();
+    }
+
+    this.shopObjects = [];
+    this.startNextWave();
+  }
+
+  private buyWeapon(weapon: WeaponType, card: GameObjects.Rectangle) {
+    if (this.materialCount < weapon.price) {
+      this.shopMessageText.setText("Not Enough Materials");
+      this.shopMessageText.setColor("#ff0000");
+      return;
+    }
+
+    if (this.weapons.length >= MAX_WEAPONS) {
+      this.shopMessageText.setText("Not Enough Weapon Space");
+      this.shopMessageText.setColor("#ff0000");
+      return;
+    }
+
+    this.materialCount -= weapon.price;
+
+    this.materialText.setText("Materials: " + this.materialCount);
+
+    card.disableInteractive();
+    card.setFillStyle(0x777777);
+
+    this.weapons.push({ type: weapon, nextFireTime: 0 });
+
+    this.showOwnedWeapons();
+
+    this.shopMessageText.setText("Bought: " + weapon.name);
+    this.shopMessageText.setColor("#00ff00");
+  }
+
+  private showOffers() {
+    for (const obj of this.offerObjects) {
+      obj.destroy();
+    }
+    this.offerObjects = [];
+
     for (let i = 0; i <= 2; i++) {
       const randomWeapon = PhaserMath.RND.pick(WEAPON_TYPES);
       const cardX = GAME_WIDTH / 2 + (i - 1) * 260;
@@ -486,100 +590,92 @@ export class Game extends Scene {
         cardPriceText,
         cardRangeText,
       );
+      this.offerObjects.push(
+        card,
+        cardDamageText,
+        cardFireRateText,
+        cardNameText,
+        cardPriceText,
+        cardRangeText,
+      );
     }
-
-    const button = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT - 80,
-      200,
-      60,
-      0x44aa44,
-    );
-    button.setInteractive();
-    button.on("pointerdown", () => this.closeShop());
-
-    this.buttonText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 80, "Next Wave", {
-        fontSize: 28,
-        color: "#ffffff",
-      })
-      .setOrigin(0.5);
-
-    this.weaponsText = this.add
-      .text(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT - 160,
-        "Weapons (" +
-          this.weapons.length +
-          "/" +
-          MAX_WEAPONS +
-          "): " +
-          this.getWeaponsList(),
-        { fontSize: 24, color: "#ffffff" },
-      )
-      .setOrigin(0.5);
-
-    this.shopMessageText = this.add
-      .text(GAME_WIDTH - 200, GAME_HEIGHT - 40, "", {
-        fontSize: 20,
-        color: "#ff0000",
-      })
-      .setOrigin(0.5);
-
-    this.shopObjects.push(
-      this.shopText,
-      this.buttonText,
-      button,
-      this.weaponsText,
-      this.shopMessageText,
-    );
   }
 
-  private closeShop() {
-    for (const obj of this.shopObjects) {
-      obj.destroy();
-    }
-
-    this.shopObjects = [];
-    this.startNextWave();
-  }
-
-  private buyWeapon(weapon: WeaponType, card: GameObjects.Rectangle) {
-    if (this.materialCount < weapon.price) {
+  private reroll() {
+    if (this.materialCount < this.rerollCost) {
       this.shopMessageText.setText("Not Enough Materials");
       this.shopMessageText.setColor("#ff0000");
       return;
     }
-
-    if (this.weapons.length >= MAX_WEAPONS) {
-      this.shopMessageText.setText("Not Enough Weapon Space");
-      this.shopMessageText.setColor("#ff0000");
-      return;
-    }
-
-    this.materialCount -= weapon.price;
+    this.materialCount -= this.rerollCost;
 
     this.materialText.setText("Materials: " + this.materialCount);
 
-    card.disableInteractive();
-    card.setFillStyle(0x777777);
+    this.showOffers();
+    this.rerollCost += 1;
 
-    this.weapons.push({ type: weapon, nextFireTime: 0 });
-
-    this.weaponsText.setText(
-      "Weapons (" +
-        this.weapons.length +
-        "/" +
-        MAX_WEAPONS +
-        "):" +
-        this.getWeaponsList(),
-    );
-
-    this.shopMessageText.setText("Bought: " + weapon.name);
-    this.shopMessageText.setColor("#00ff00");
+    this.rerollText.setText("Reroll: (" + this.rerollCost + ")");
   }
 
-  private getWeaponsList() {
-    return this.weapons.map((x) => x.type.name).join(", ");
+  private showOwnedWeapons() {
+    for (const obj of this.ownedWeaponObjects) {
+      obj.destroy();
+    }
+
+    this.ownedWeaponObjects = [];
+
+    for (let i = 0; i < this.weapons.length; i++) {
+      const weaponBoxX = 100 + i * 140;
+
+      const refund = this.getRefund(this.weapons[i].type);
+
+      const weaponBox = this.add.rectangle(
+        weaponBoxX,
+        GAME_HEIGHT - 160,
+        130,
+        50,
+        0x333333,
+      );
+
+      const ownedWeaponText = this.add
+        .text(
+          weaponBoxX,
+          GAME_HEIGHT - 160,
+          this.weapons[i].type.name + "\nSell: " + refund,
+          { align: "center", fontSize: 16, color: "#ffffff" },
+        )
+        .setOrigin(0.5);
+
+      weaponBox.setInteractive();
+      weaponBox.on("pointerdown", () => this.sellWeapon(i));
+
+      this.ownedWeaponObjects.push(ownedWeaponText, weaponBox);
+      this.shopObjects.push(ownedWeaponText, weaponBox);
+    }
+  }
+
+  private sellWeapon(slot: number) {
+    if (this.weapons.length === 1) {
+      this.shopMessageText.setText("You can't sell your last weapon");
+      this.shopMessageText.setColor("#ff0000");
+      return;
+    }
+    const weapon = this.weapons[slot];
+    this.materialCount += this.getRefund(weapon.type);
+
+    this.weapons.splice(slot, 1);
+
+    this.shopMessageText.setText(
+      "Sold " + weapon.type.name + " for " + this.getRefund(weapon.type),
+    );
+    this.shopMessageText.setColor("#00ff00");
+    this.materialText.setText("Materials: " + this.materialCount);
+
+    this.showOwnedWeapons();
+  }
+
+  private getRefund(weapon: WeaponType) {
+    const refund = Math.floor(weapon.price * SELL_MULTIPLIER);
+    return refund;
   }
 }

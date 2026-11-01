@@ -33,7 +33,7 @@ export const MATERIALS = {
 };
 
 export const WAVE = {
-  BASE_DURATION: 20,
+  BASE_DURATION: 5,
   DURATION_INCREASE_S: 5,
   MAX_DURATION_S: 60,
   ENEMY_HEALTH_PER_WAVE: 1,
@@ -41,10 +41,12 @@ export const WAVE = {
   MIN_SPAWN_INTERVAL: 250,
 };
 
-export const CARD = {
+export const SHOP = {
   CARD_WIDTH: 220,
   CARD_HEIGHT: 200,
   CARD_COLOR: 0x333333,
+  REROLL_BASE_COST: 2,
+  SELL_MULTIPLIER: 0.5,
 };
 
 export const GAME_WIDTH = 1024;
