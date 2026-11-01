@@ -22,6 +22,7 @@ import {
   XP,
   StatUpgrade,
   STAT_UPGRADES,
+  DAMAGE_NUMBER,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -77,6 +78,13 @@ const {
   RISE_DISTANCE,
   RISE_DURATION,
 } = XP;
+const {
+  DAMAGE_RISE_DISTANCE,
+  DAMAGE_RISE_DURATION,
+  DAMAGE_NUMBER_COLOR,
+  DAMAGE_NUMBER_RANDOMNESS,
+  DAMAGE_NUMBER_SIZE,
+} = DAMAGE_NUMBER;
 
 type OwnedWeapon = {
   type: WeaponType;
@@ -271,6 +279,8 @@ export class Game extends Scene {
         const bullet = bulletObj as GameObjects.Rectangle;
         const enemy = enemyObj as GameObjects.Rectangle;
         const weaponDamage = bullet.getData(DAMAGE_SAVE_NAME);
+
+        this.showDamageNumber(enemy.x, enemy.y - 20, weaponDamage);
 
         bullet.destroy();
 
@@ -925,6 +935,32 @@ export class Game extends Scene {
       alpha: 0,
       duration: RISE_DURATION,
       onComplete: () => levelUpText.destroy(),
+    });
+  }
+
+  private showDamageNumber(x: number, y: number, amount: number) {
+    const damageText = this.add
+      .text(
+        x +
+          PhaserMath.Between(
+            -DAMAGE_NUMBER_RANDOMNESS,
+            DAMAGE_NUMBER_RANDOMNESS,
+          ),
+        y,
+        String(Math.round(amount)),
+        {
+          fontSize: DAMAGE_NUMBER_SIZE,
+          color: DAMAGE_NUMBER_COLOR,
+        },
+      )
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: damageText,
+      y: y - DAMAGE_RISE_DISTANCE,
+      alpha: 0,
+      duration: DAMAGE_RISE_DURATION,
+      onComplete: () => damageText.destroy(),
     });
   }
 }

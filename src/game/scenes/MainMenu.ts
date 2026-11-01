@@ -47,7 +47,7 @@ export class MainMenu extends Scene {
     playButton.on("pointerdown", () => this.scene.start("Game"));
 
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "PLAY AGAIN", {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "PLAY", {
         fontSize: 28,
         color: "#ffffff",
       })
