@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../../constants";
+import { loadBestWave, saveBestWave } from "../highScore";
 
 type GameOverData = {
   wave: number;
@@ -27,6 +28,25 @@ export class GameOver extends Scene {
 
   create() {
     this.cameras.main.setBackgroundColor("#1a1a1a");
+
+    const best = loadBestWave();
+
+    if (this.wave > best) {
+      saveBestWave(this.wave);
+      this.add
+        .text(GAME_WIDTH / 2, 210, "NEW BEST!", {
+          fontSize: 32,
+          color: "#ffff00",
+        })
+        .setOrigin(0.5);
+    } else {
+      this.add
+        .text(GAME_WIDTH / 2, 450, "Best: Wave " + best, {
+          fontSize: 24,
+          color: "#aaaaaa",
+        })
+        .setOrigin(0.5);
+    }
 
     this.add
       .text(GAME_WIDTH / 2, 150, "GAME OVER", {

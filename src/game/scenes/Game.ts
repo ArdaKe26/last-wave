@@ -23,7 +23,6 @@ import {
   StatUpgrade,
   STAT_UPGRADES,
 } from "../../constants";
-import { GameOver } from "./GameOver";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
 const {
@@ -109,7 +108,6 @@ export class Game extends Scene {
   private materialText!: GameObjects.Text;
   private healthText!: GameObjects.Text;
   private xpText!: GameObjects.Text;
-  private gameOverText!: GameObjects.Text;
   private waveText!: GameObjects.Text;
   private buttonText!: GameObjects.Text;
   private shopText!: GameObjects.Text;

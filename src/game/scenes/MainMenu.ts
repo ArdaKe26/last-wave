@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../../constants";
+import { loadBestWave } from "../highScore";
 
 export class MainMenu extends Scene {
   constructor() {
@@ -8,6 +9,18 @@ export class MainMenu extends Scene {
 
   create() {
     this.cameras.main.setBackgroundColor("#1a1a1a");
+
+    const best = loadBestWave();
+
+    if (best > 0) {
+      this.add
+        .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 60, "Best: Wave " + best, {
+          fontSize: 24,
+          color: "#ffff00",
+          align: "center",
+        })
+        .setOrigin(0.5);
+    }
 
     this.add
       .text(GAME_WIDTH / 2, 180, "LAST WAVE", {
