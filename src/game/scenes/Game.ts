@@ -17,6 +17,7 @@ import {
   WAVE,
   WeaponType,
   WEAPON_TYPES,
+  CARD,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -41,6 +42,7 @@ const {
   SPAWN_INTERVAL_MULTIPLIER,
   MIN_SPAWN_INTERVAL,
 } = WAVE;
+const { CARD_COLOR, CARD_HEIGHT, CARD_WIDTH } = CARD;
 
 type OwnedWeapon = {
   type: WeaponType;
@@ -51,18 +53,23 @@ export class Game extends Scene {
   private enemies!: Physics.Arcade.Group;
   private bullets!: Physics.Arcade.Group;
   private materials!: Physics.Arcade.Group;
-  private materialText!: GameObjects.Text;
-  private healthText!: GameObjects.Text;
-  private gameOverText!: GameObjects.Text;
-  private waveText!: GameObjects.Text;
-  private waveEndText!: GameObjects.Text;
   private spawnTimer!: Time.TimerEvent;
   private weapons: OwnedWeapon[] = [];
+  private shopObjects: GameObjects.GameObject[] = [];
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
   private sKey!: Input.Keyboard.Key;
   private dKey!: Input.Keyboard.Key;
+
+  private materialText!: GameObjects.Text;
+  private healthText!: GameObjects.Text;
+  private gameOverText!: GameObjects.Text;
+  private waveText!: GameObjects.Text;
+  private buttonText!: GameObjects.Text;
+  private shopText!: GameObjects.Text;
+  private shopMessageText!: GameObjects.Text;
+  private weaponsText!: GameObjects.Text;
 
   private playerHealth = MAX_HEALTH;
   private invulnerableUntil = 0;
@@ -378,34 +385,7 @@ export class Game extends Scene {
     this.physics.pause();
     this.time.paused = true;
 
-    this.waveEndText = this.add
-      .text(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2,
-        "Wave " + this.wave + " completed!\nPress SPACE for the next vawe",
-        { fontSize: 24, color: "#ffffff" },
-      )
-      .setOrigin(0.5);
-
-    this.input.keyboard!.once("keydown-SPACE", () => {
-      this.wave += 1;
-      this.waveTimeLeft = this.getWaveDuration();
-      this.waveEndText.destroy(true);
-      this.waveText.setText("Wave " + this.wave + " - " + this.waveTimeLeft);
-      this.physics.resume();
-      this.time.paused = false;
-      this.player.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
-      this.playerHealth = MAX_HEALTH;
-      this.healthText.setText("Health: " + this.playerHealth);
-      this.spawnTimer.remove();
-      this.spawnTimer = this.time.addEvent({
-        delay: this.getSpawnInterval(),
-        loop: true,
-        callback: () => {
-          this.spawnEnemy();
-        },
-      });
-    });
+    this.openShop();
   }
 
   private tickWaveTimer() {
@@ -434,5 +414,172 @@ export class Game extends Scene {
 
   private getEnemyHealth() {
     return ENEMY_HEALTH + (this.wave - 1) * ENEMY_HEALTH_PER_WAVE;
+  }
+
+  private startNextWave() {
+    this.wave += 1;
+    this.waveTimeLeft = this.getWaveDuration();
+    this.waveText.setText("Wave " + this.wave + " - " + this.waveTimeLeft);
+    this.physics.resume();
+    this.time.paused = false;
+    this.player.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    this.playerHealth = MAX_HEALTH;
+    this.healthText.setText("Health: " + this.playerHealth);
+    this.spawnTimer.remove();
+    this.spawnTimer = this.time.addEvent({
+      delay: this.getSpawnInterval(),
+      loop: true,
+      callback: () => {
+        this.spawnEnemy();
+      },
+    });
+  }
+
+  private openShop() {
+    this.shopText = this.add
+      .text(GAME_WIDTH / 2, 100, "Wave " + this.wave + " completed - Shop", {
+        fontSize: 48,
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+
+    for (let i = 0; i <= 2; i++) {
+      const randomWeapon = PhaserMath.RND.pick(WEAPON_TYPES);
+      const cardX = GAME_WIDTH / 2 + (i - 1) * 260;
+
+      const card = this.add.rectangle(
+        cardX,
+        GAME_HEIGHT / 2,
+        CARD_WIDTH,
+        CARD_HEIGHT,
+        CARD_COLOR,
+      );
+
+      const cardNameText = this.add
+        .text(cardX, GAME_HEIGHT / 2 - 40, "WEAPON: " + randomWeapon.name)
+        .setOrigin(0.5);
+      const cardDamageText = this.add
+        .text(cardX, GAME_HEIGHT / 2 - 20, "Damage: " + randomWeapon.damage)
+        .setOrigin(0.5);
+      const cardFireRateText = this.add
+        .text(
+          cardX,
+          GAME_HEIGHT / 2,
+          "Fire Rate: " + randomWeapon.fire_interval + "ms",
+        )
+        .setOrigin(0.5);
+      const cardRangeText = this.add
+        .text(cardX, GAME_HEIGHT / 2 + 20, "Range: " + randomWeapon.range)
+        .setOrigin(0.5);
+      const cardPriceText = this.add
+        .text(cardX, GAME_HEIGHT / 2 + 40, "Price: " + randomWeapon.price)
+        .setOrigin(0.5);
+
+      card.setInteractive();
+      card.on("pointerdown", () => this.buyWeapon(randomWeapon, card));
+
+      this.shopObjects.push(
+        card,
+        cardDamageText,
+        cardFireRateText,
+        cardNameText,
+        cardPriceText,
+        cardRangeText,
+      );
+    }
+
+    const button = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT - 80,
+      200,
+      60,
+      0x44aa44,
+    );
+    button.setInteractive();
+    button.on("pointerdown", () => this.closeShop());
+
+    this.buttonText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 80, "Next Wave", {
+        fontSize: 28,
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+
+    this.weaponsText = this.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT - 160,
+        "Weapons (" +
+          this.weapons.length +
+          "/" +
+          MAX_WEAPONS +
+          "): " +
+          this.getWeaponsList(),
+        { fontSize: 24, color: "#ffffff" },
+      )
+      .setOrigin(0.5);
+
+    this.shopMessageText = this.add
+      .text(GAME_WIDTH - 200, GAME_HEIGHT - 40, "", {
+        fontSize: 20,
+        color: "#ff0000",
+      })
+      .setOrigin(0.5);
+
+    this.shopObjects.push(
+      this.shopText,
+      this.buttonText,
+      button,
+      this.weaponsText,
+      this.shopMessageText,
+    );
+  }
+
+  private closeShop() {
+    for (const obj of this.shopObjects) {
+      obj.destroy();
+    }
+
+    this.shopObjects = [];
+    this.startNextWave();
+  }
+
+  private buyWeapon(weapon: WeaponType, card: GameObjects.Rectangle) {
+    if (this.materialCount < weapon.price) {
+      this.shopMessageText.setText("Not Enough Materials");
+      this.shopMessageText.setColor("#ff0000");
+      return;
+    }
+
+    if (this.weapons.length >= MAX_WEAPONS) {
+      this.shopMessageText.setText("Not Enough Weapon Space");
+      this.shopMessageText.setColor("#ff0000");
+      return;
+    }
+
+    this.materialCount -= weapon.price;
+
+    this.materialText.setText("Materials: " + this.materialCount);
+
+    card.disableInteractive();
+    card.setFillStyle(0x777777);
+
+    this.weapons.push({ type: weapon, nextFireTime: 0 });
+
+    this.weaponsText.setText(
+      "Weapons (" +
+        this.weapons.length +
+        "/" +
+        MAX_WEAPONS +
+        "):" +
+        this.getWeaponsList(),
+    );
+
+    this.shopMessageText.setText("Bought: " + weapon.name);
+    this.shopMessageText.setColor("#00ff00");
+  }
+
+  private getWeaponsList() {
+    return this.weapons.map((x) => x.type.name).join(", ");
   }
 }

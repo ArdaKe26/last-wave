@@ -41,6 +41,12 @@ export const WAVE = {
   MIN_SPAWN_INTERVAL: 250,
 };
 
+export const CARD = {
+  CARD_WIDTH: 220,
+  CARD_HEIGHT: 200,
+  CARD_COLOR: 0x333333,
+};
+
 export const GAME_WIDTH = 1024;
 export const GAME_HEIGHT = 768;
 
