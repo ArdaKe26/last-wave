@@ -18,6 +18,7 @@ import {
   WeaponType,
   WEAPON_TYPES,
   SHOP,
+  HEALTH_BAR,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -49,6 +50,15 @@ const {
   REROLL_BASE_COST,
   SELL_MULTIPLIER,
 } = SHOP;
+const {
+  BG_COLOR,
+  FILL_COLOR,
+  HEALTH_BAR_BG_HEIGHT,
+  HEALTH_BAR_BG_WIDTH,
+  HEALTH_BAR_FILL_HEIGHT,
+  HEALTH_BAR_FILL_WIDTH,
+  FILL_COLOR_BG,
+} = HEALTH_BAR;
 
 type OwnedWeapon = {
   type: WeaponType;
@@ -56,6 +66,9 @@ type OwnedWeapon = {
 };
 export class Game extends Scene {
   private player!: GameObjects.Rectangle;
+  private healthBarBg!: GameObjects.Rectangle;
+  private healthBarFill!: GameObjects.Rectangle;
+  private healthBarFillBg!: GameObjects.Rectangle;
   private enemies!: Physics.Arcade.Group;
   private bullets!: Physics.Arcade.Group;
   private materials!: Physics.Arcade.Group;
@@ -80,6 +93,10 @@ export class Game extends Scene {
   private rerollText!: GameObjects.Text;
 
   private playerHealth = MAX_HEALTH;
+  private maxHealth = MAX_HEALTH;
+  private moveSpeed = SPEED;
+  private damageMultiplier = 1;
+  private attackSpeedMulitiplier = 1;
   private invulnerableUntil = 0;
 
   private materialCount = 0;
@@ -95,6 +112,10 @@ export class Game extends Scene {
 
   create() {
     this.playerHealth = MAX_HEALTH;
+    this.maxHealth = MAX_HEALTH;
+    this.moveSpeed = SPEED;
+    this.damageMultiplier = 1;
+    this.attackSpeedMulitiplier = 1;
     this.materialCount = 0;
     this.invulnerableUntil = 0;
     this.time.paused = false;
@@ -127,10 +148,40 @@ export class Game extends Scene {
       fontSize: 24,
       color: "#ffffff",
     });
-    this.healthText = this.add.text(16, 48, "Health: " + MAX_HEALTH, {
-      fontSize: 24,
-      color: "#ffffff",
-    });
+
+    this.healthBarBg = this.add
+      .rectangle(16, 48, HEALTH_BAR_BG_WIDTH, HEALTH_BAR_BG_HEIGHT, BG_COLOR)
+      .setOrigin(0, 0);
+    this.healthBarFillBg = this.add
+      .rectangle(
+        18,
+        50,
+        HEALTH_BAR_FILL_WIDTH,
+        HEALTH_BAR_FILL_HEIGHT,
+        FILL_COLOR_BG,
+      )
+      .setOrigin(0, 0);
+    this.healthBarFill = this.add
+      .rectangle(
+        18,
+        50,
+        HEALTH_BAR_FILL_WIDTH,
+        HEALTH_BAR_FILL_HEIGHT,
+        FILL_COLOR,
+      )
+      .setOrigin(0, 0);
+
+    this.healthText = this.add
+      .text(
+        16 + HEALTH_BAR_BG_WIDTH / 2,
+        48 + HEALTH_BAR_BG_HEIGHT / 2,
+        this.playerHealth + "/" + this.maxHealth,
+        { fontSize: 16, color: "#ffffff" },
+      )
+      .setOrigin(0.5);
+
+    this.updateHealthUI();
+
     this.time.addEvent({
       delay: 1000,
       loop: true,
@@ -200,7 +251,7 @@ export class Game extends Scene {
 
       this.invulnerableUntil = this.time.now + INVULNERABLE_MS;
 
-      this.healthText.setText("Health: " + this.playerHealth);
+      this.updateHealthUI();
 
       this.player.setFillStyle(0xff0000);
 
@@ -234,7 +285,10 @@ export class Game extends Scene {
     const direction = new PhaserMath.Vector2(x, y).normalize();
 
     const body = this.player.body as Physics.Arcade.Body;
-    body.setVelocity(direction.x * SPEED, direction.y * SPEED);
+    body.setVelocity(
+      direction.x * this.moveSpeed,
+      direction.y * this.moveSpeed,
+    );
 
     for (const child of this.enemies.getChildren()) {
       const enemy = child as GameObjects.Rectangle;
@@ -268,7 +322,9 @@ export class Game extends Scene {
     for (const weapon of this.weapons) {
       if (this.time.now >= weapon.nextFireTime) {
         if (this.shoot(weapon.type)) {
-          weapon.nextFireTime = this.time.now + weapon.type.fire_interval;
+          weapon.nextFireTime =
+            this.time.now +
+            weapon.type.fire_interval / this.attackSpeedMulitiplier;
         }
       }
     }
@@ -356,7 +412,7 @@ export class Game extends Scene {
       bulletDirection.y * weapon.bullet_speed,
     );
 
-    bullet.setData(DAMAGE_SAVE_NAME, weapon.damage);
+    bullet.setData(DAMAGE_SAVE_NAME, weapon.damage * this.damageMultiplier);
 
     return true;
   }
@@ -432,8 +488,8 @@ export class Game extends Scene {
     this.physics.resume();
     this.time.paused = false;
     this.player.setPosition(GAME_WIDTH / 2, GAME_HEIGHT / 2);
-    this.playerHealth = MAX_HEALTH;
-    this.healthText.setText("Health: " + this.playerHealth);
+    this.playerHealth = this.maxHealth;
+    this.updateHealthUI();
     this.spawnTimer.remove();
     this.spawnTimer = this.time.addEvent({
       delay: this.getSpawnInterval(),
@@ -677,5 +733,10 @@ export class Game extends Scene {
   private getRefund(weapon: WeaponType) {
     const refund = Math.floor(weapon.price * SELL_MULTIPLIER);
     return refund;
+  }
+
+  private updateHealthUI() {
+    this.healthBarFill.scaleX = Math.max(0, this.playerHealth) / this.maxHealth;
+    this.healthText.setText(this.playerHealth + "/" + this.maxHealth);
   }
 }
