@@ -160,7 +160,7 @@ export class Game extends Scene {
     this.kills = 0;
     this.totalMaterials = 0;
 
-    this.weapons = [{ type: WEAPON_TYPES[1], nextFireTime: 0 }];
+    this.weapons = [{ type: WEAPON_TYPES[0], nextFireTime: 0 }];
 
     this.player = this.add.rectangle(
       GAME_WIDTH / 2,
@@ -182,7 +182,7 @@ export class Game extends Scene {
         { fontSize: 24, color: "#ffffff" },
       )
       .setOrigin(0.5);
-    this.materialText = this.add.text(16, 16, "Materials: 0", {
+    this.materialText = this.add.text(16, 16, "Material: 0", {
       fontSize: 24,
       color: "#ffffff",
     });
@@ -306,7 +306,7 @@ export class Game extends Scene {
         this.materialCount += MATERIAL_VALUE;
         this.totalMaterials += MATERIAL_VALUE;
 
-        this.materialText.setText("Materials: " + this.materialCount);
+        this.updateMaterialUI();
 
         material.destroy();
 
@@ -660,7 +660,7 @@ export class Game extends Scene {
 
     this.materialCount -= weapon.price;
 
-    this.materialText.setText("Materials: " + this.materialCount);
+    this.updateMaterialUI();
 
     card.disableInteractive();
     card.setFillStyle(0x777777);
@@ -741,7 +741,7 @@ export class Game extends Scene {
     }
     this.materialCount -= this.rerollCost;
 
-    this.materialText.setText("Materials: " + this.materialCount);
+    this.updateMaterialUI();
 
     this.showOffers();
     this.rerollCost += 1;
@@ -801,7 +801,7 @@ export class Game extends Scene {
       "Sold " + weapon.type.name + " for " + this.getRefund(weapon.type),
     );
     this.shopMessageText.setColor("#00ff00");
-    this.materialText.setText("Materials: " + this.materialCount);
+    this.updateMaterialUI();
 
     this.showOwnedWeapons();
   }
@@ -990,5 +990,13 @@ export class Game extends Scene {
       duration: DAMAGE_RISE_DURATION,
       onComplete: () => damageText.destroy(),
     });
+  }
+
+  private updateMaterialUI() {
+    if (this.materialCount > 1) {
+      this.materialText.setText("Materials: " + this.materialCount);
+    } else {
+      this.materialText.setText("Material: " + this.materialCount);
+    }
   }
 }
