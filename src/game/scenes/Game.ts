@@ -323,6 +323,8 @@ export class Game extends Scene {
 
       this.invulnerableUntil = this.time.now + INVULNERABLE_MS;
 
+      this.showDamageGotNumber(ENEMY_DAMAGE);
+
       this.updateHealthUI();
 
       this.player.setFillStyle(0xff0000);
@@ -958,6 +960,32 @@ export class Game extends Scene {
     this.tweens.add({
       targets: damageText,
       y: y - DAMAGE_RISE_DISTANCE,
+      alpha: 0,
+      duration: DAMAGE_RISE_DURATION,
+      onComplete: () => damageText.destroy(),
+    });
+  }
+
+  private showDamageGotNumber(amount: number) {
+    const damageText = this.add
+      .text(
+        this.player.x +
+          PhaserMath.Between(
+            -DAMAGE_NUMBER_RANDOMNESS,
+            DAMAGE_NUMBER_RANDOMNESS,
+          ),
+        this.player.y - 20,
+        String(Math.round(amount)),
+        {
+          fontSize: DAMAGE_NUMBER_SIZE,
+          color: DAMAGE_NUMBER_COLOR,
+        },
+      )
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: damageText,
+      y: this.player.y - DAMAGE_RISE_DISTANCE,
       alpha: 0,
       duration: DAMAGE_RISE_DURATION,
       onComplete: () => damageText.destroy(),
