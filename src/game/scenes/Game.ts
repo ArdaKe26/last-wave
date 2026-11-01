@@ -23,6 +23,7 @@ import {
   StatUpgrade,
   STAT_UPGRADES,
 } from "../../constants";
+import { GameOver } from "./GameOver";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
 const {
@@ -73,6 +74,9 @@ const {
   XP_BG_COLOR,
   XP_FILL_COLOR,
   XP_FILL_COLOR_BG,
+  LEVEL_UP_TEXT_COLOR,
+  RISE_DISTANCE,
+  RISE_DURATION,
 } = XP;
 
 type OwnedWeapon = {
@@ -126,12 +130,12 @@ export class Game extends Scene {
   private level = 1;
   private xp = 0;
   private pendingLevelUps = 0;
+  private kills = 0;
+  private totalMaterials = 0;
 
   constructor() {
     super("Game");
   }
-
-  preload() {}
 
   create() {
     this.playerHealth = MAX_HEALTH;
@@ -147,6 +151,8 @@ export class Game extends Scene {
     this.level = 1;
     this.xp = 0;
     this.pendingLevelUps = 0;
+    this.kills = 0;
+    this.totalMaterials = 0;
 
     this.weapons = [{ type: WEAPON_TYPES[1], nextFireTime: 0 }];
 
@@ -276,6 +282,8 @@ export class Game extends Scene {
         if (enemy.getData(ENEMY_HEALTH_DATA_NAME) <= 0) {
           this.dropMaterial(enemy.x, enemy.y);
 
+          this.kills += 1;
+
           enemy.destroy();
         }
       },
@@ -288,6 +296,7 @@ export class Game extends Scene {
         const material = materialObj as GameObjects.Rectangle;
 
         this.materialCount += MATERIAL_VALUE;
+        this.totalMaterials += MATERIAL_VALUE;
 
         this.materialText.setText("Materials: " + this.materialCount);
 
@@ -488,14 +497,12 @@ export class Game extends Scene {
     this.physics.pause();
     this.time.paused = true;
 
-    this.gameOverText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "GAME OVER\nPress R to restart", {
-        fontSize: 48,
-        color: "#ffffff",
-      })
-      .setOrigin(0.5);
-
-    this.input.keyboard!.once("keydown-R", () => this.scene.restart());
+    this.scene.start("GameOver", {
+      wave: this.wave,
+      level: this.level,
+      kills: this.kills,
+      materials: this.totalMaterials,
+    });
   }
 
   private endWave() {
@@ -805,13 +812,14 @@ export class Game extends Scene {
 
   private addXp(amount: number) {
     this.xp += amount;
-    this.updateXpUI();
     while (this.xp >= this.getXpToNextLevel()) {
       this.xp -= this.getXpToNextLevel();
 
       this.level += 1;
       this.pendingLevelUps += 1;
+      this.showLevelPopUp();
     }
+    this.updateXpUI();
   }
 
   private updateXpUI() {
@@ -903,5 +911,22 @@ export class Game extends Scene {
     } else {
       this.openShop();
     }
+  }
+
+  private showLevelPopUp() {
+    const levelUpText = this.add
+      .text(this.player.x, this.player.y - 30, "LEVEL UP!", {
+        fontSize: 20,
+        color: LEVEL_UP_TEXT_COLOR,
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: levelUpText,
+      y: levelUpText.y - RISE_DISTANCE,
+      alpha: 0,
+      duration: RISE_DURATION,
+      onComplete: () => levelUpText.destroy(),
+    });
   }
 }

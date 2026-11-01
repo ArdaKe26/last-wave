@@ -61,7 +61,7 @@ export const HEALTH_BAR = {
 
 export const XP = {
   PER_MATERIAL: 1,
-  BASE_TO_LEVEL: 2,
+  BASE_TO_LEVEL: 10,
   INCREASE_PER_LEVEL: 7,
   XP_BAR_BG_WIDTH: 200,
   XP_BAR_BG_HEIGHT: 16,
@@ -70,6 +70,9 @@ export const XP = {
   XP_BG_COLOR: 0x333333,
   XP_FILL_COLOR: 0x44ff44,
   XP_FILL_COLOR_BG: 0x5a5a5a,
+  LEVEL_UP_TEXT_COLOR: "#ffff00",
+  RISE_DISTANCE: 50,
+  RISE_DURATION: 1000,
 };
 
 export const GAME_WIDTH = 1024;
