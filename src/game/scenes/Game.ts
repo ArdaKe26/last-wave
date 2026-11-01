@@ -15,6 +15,8 @@ import {
   BULLET,
   MATERIALS,
   WAVE,
+  WeaponType,
+  WEAPON_TYPES,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -28,8 +30,8 @@ const {
   ENEMY_HEALTH_DATA_NAME,
   ENEMY_DAMAGE,
 } = ENEMY;
-const { RANGE, FIRE_INTERVAL_MS, DAMAGE } = WEAPON;
-const { BULLET_COLOR, BULLET_SIZE, BULLET_SPEED } = BULLET;
+const { MAX_WEAPONS, DAMAGE_SAVE_NAME } = WEAPON;
+const { BULLET_SIZE } = BULLET;
 const { MATERIAL_COLOR, MATERIAL_SIZE, MATERIAL_VALUE } = MATERIALS;
 const {
   BASE_DURATION,
@@ -40,6 +42,10 @@ const {
   MIN_SPAWN_INTERVAL,
 } = WAVE;
 
+type OwnedWeapon = {
+  type: WeaponType;
+  nextFireTime: number;
+};
 export class Game extends Scene {
   private player!: GameObjects.Rectangle;
   private enemies!: Physics.Arcade.Group;
@@ -51,6 +57,7 @@ export class Game extends Scene {
   private waveText!: GameObjects.Text;
   private waveEndText!: GameObjects.Text;
   private spawnTimer!: Time.TimerEvent;
+  private weapons: OwnedWeapon[] = [];
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
@@ -77,6 +84,8 @@ export class Game extends Scene {
     this.time.paused = false;
     this.wave = 1;
     this.waveTimeLeft = BASE_DURATION;
+
+    this.weapons = [{ type: WEAPON_TYPES[1], nextFireTime: 0 }];
 
     this.player = this.add.rectangle(
       GAME_WIDTH / 2,
@@ -105,11 +114,6 @@ export class Game extends Scene {
     this.healthText = this.add.text(16, 48, "Health: " + MAX_HEALTH, {
       fontSize: 24,
       color: "#ffffff",
-    });
-    this.time.addEvent({
-      delay: FIRE_INTERVAL_MS,
-      loop: true,
-      callback: () => this.shoot(),
     });
     this.time.addEvent({
       delay: 1000,
@@ -142,9 +146,11 @@ export class Game extends Scene {
       (bulletObj, enemyObj) => {
         const bullet = bulletObj as GameObjects.Rectangle;
         const enemy = enemyObj as GameObjects.Rectangle;
+        const weaponDamage = bullet.getData(DAMAGE_SAVE_NAME);
+
         bullet.destroy();
 
-        const health = enemy.getData(ENEMY_HEALTH_DATA_NAME) - DAMAGE;
+        const health = enemy.getData(ENEMY_HEALTH_DATA_NAME) - weaponDamage;
         enemy.setData(ENEMY_HEALTH_DATA_NAME, health);
 
         if (enemy.getData(ENEMY_HEALTH_DATA_NAME) <= 0) {
@@ -242,6 +248,14 @@ export class Game extends Scene {
         bullet.destroy();
       }
     }
+
+    for (const weapon of this.weapons) {
+      if (this.time.now >= weapon.nextFireTime) {
+        if (this.shoot(weapon.type)) {
+          weapon.nextFireTime = this.time.now + weapon.type.fire_interval;
+        }
+      }
+    }
   }
 
   private spawnEnemy() {
@@ -274,9 +288,9 @@ export class Game extends Scene {
     body.setCollideWorldBounds(true);
   }
 
-  private findNearestEnemy() {
+  private findNearestEnemy(range: number) {
     let nearest: GameObjects.Rectangle | null = null;
-    let nearestDistance = RANGE;
+    let nearestDistance = range;
 
     for (const child of this.enemies.getChildren()) {
       const enemy = child as GameObjects.Rectangle;
@@ -297,11 +311,11 @@ export class Game extends Scene {
     return nearest;
   }
 
-  private shoot() {
-    const nearestEnemy = this.findNearestEnemy();
+  private shoot(weapon: WeaponType) {
+    const nearestEnemy = this.findNearestEnemy(weapon.range);
 
     if (nearestEnemy === null) {
-      return;
+      return false;
     }
 
     const bullet = this.add.rectangle(
@@ -309,7 +323,7 @@ export class Game extends Scene {
       this.player.y,
       BULLET_SIZE,
       BULLET_SIZE,
-      BULLET_COLOR,
+      weapon.bullet_color,
     );
 
     this.bullets.add(bullet);
@@ -322,9 +336,13 @@ export class Game extends Scene {
     ).normalize();
 
     body.setVelocity(
-      bulletDirection.x * BULLET_SPEED,
-      bulletDirection.y * BULLET_SPEED,
+      bulletDirection.x * weapon.bullet_speed,
+      bulletDirection.y * weapon.bullet_speed,
     );
+
+    bullet.setData(DAMAGE_SAVE_NAME, weapon.damage);
+
+    return true;
   }
 
   private dropMaterial(x: number, y: number) {

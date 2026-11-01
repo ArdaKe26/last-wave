@@ -18,15 +18,12 @@ export const ENEMY = {
 };
 
 export const WEAPON = {
-  RANGE: 300,
-  FIRE_INTERVAL_MS: 500,
-  DAMAGE: 2,
+  MAX_WEAPONS: 6,
+  DAMAGE_SAVE_NAME: "damage",
 };
 
 export const BULLET = {
   BULLET_SIZE: 8,
-  BULLET_COLOR: 0xffff00,
-  BULLET_SPEED: 400,
 };
 
 export const MATERIALS = {
@@ -46,3 +43,52 @@ export const WAVE = {
 
 export const GAME_WIDTH = 1024;
 export const GAME_HEIGHT = 768;
+
+export type WeaponType = {
+  name: string;
+  damage: number;
+  fire_interval: number;
+  range: number;
+  bullet_speed: number;
+  bullet_color: number;
+  price: number;
+};
+
+export const WEAPON_TYPES: WeaponType[] = [
+  {
+    name: "Pistol",
+    damage: 2,
+    fire_interval: 500,
+    range: 300,
+    bullet_speed: 450,
+    bullet_color: 0xffff00,
+    price: 10,
+  },
+  {
+    name: "SMG",
+    damage: 1,
+    fire_interval: 150,
+    range: 250,
+    bullet_speed: 800,
+    bullet_color: 0xffa500,
+    price: 15,
+  },
+  {
+    name: "Rifle",
+    damage: 3,
+    fire_interval: 400,
+    range: 400,
+    bullet_speed: 650,
+    bullet_color: 0xffffff,
+    price: 20,
+  },
+  {
+    name: "Sniper",
+    damage: 8,
+    fire_interval: 1300,
+    range: 800,
+    bullet_speed: 1000,
+    bullet_color: 0x00ffff,
+    price: 25,
+  },
+];
