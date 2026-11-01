@@ -61,7 +61,7 @@ export const HEALTH_BAR = {
 
 export const XP = {
   PER_MATERIAL: 1,
-  BASE_TO_LEVEL: 10,
+  BASE_TO_LEVEL: 2,
   INCREASE_PER_LEVEL: 7,
   XP_BAR_BG_WIDTH: 200,
   XP_BAR_BG_HEIGHT: 16,
@@ -121,5 +121,41 @@ export const WEAPON_TYPES: WeaponType[] = [
     bullet_speed: 1000,
     bullet_color: 0x00ffff,
     price: 25,
+  },
+];
+
+export type StatName = "maxHealth" | "moveSpeed" | "damage" | "attackSpeed";
+
+export type StatUpgrade = {
+  name: string;
+  description: string;
+  stat: StatName;
+  amount: number;
+};
+
+export const STAT_UPGRADES: StatUpgrade[] = [
+  {
+    name: "Vitality",
+    description: "+2 Max Health",
+    stat: "maxHealth",
+    amount: 2,
+  },
+  {
+    name: "Swiftness",
+    description: "+10% Move Speed",
+    stat: "moveSpeed",
+    amount: 0.1,
+  },
+  {
+    name: "Power",
+    description: "+15% Damage",
+    stat: "damage",
+    amount: 0.15,
+  },
+  {
+    name: "Haste",
+    description: "+10% Attack Speed",
+    stat: "attackSpeed",
+    amount: 0.1,
   },
 ];

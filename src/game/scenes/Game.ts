@@ -20,6 +20,8 @@ import {
   SHOP,
   HEALTH_BAR,
   XP,
+  StatUpgrade,
+  STAT_UPGRADES,
 } from "../../constants";
 
 const { SIZE, COLOR, SPEED, MAX_HEALTH, INVULNERABLE_MS } = PLAYER;
@@ -93,6 +95,7 @@ export class Game extends Scene {
   private shopObjects: GameObjects.GameObject[] = [];
   private offerObjects: GameObjects.GameObject[] = [];
   private ownedWeaponObjects: GameObjects.GameObject[] = [];
+  private levelUpObjects: GameObjects.GameObject[] = [];
 
   private wKey!: Input.Keyboard.Key;
   private aKey!: Input.Keyboard.Key;
@@ -502,7 +505,11 @@ export class Game extends Scene {
     this.physics.pause();
     this.time.paused = true;
 
-    this.openShop();
+    if (this.pendingLevelUps > 0) {
+      this.openLevelUp();
+    } else {
+      this.openShop();
+    }
   }
 
   private tickWaveTimer() {
@@ -810,5 +817,91 @@ export class Game extends Scene {
   private updateXpUI() {
     this.xpBarFill.scaleX = this.xp / this.getXpToNextLevel();
     this.xpText.setText("Lv " + this.level);
+  }
+
+  private applyUpgrade(upgrade: StatUpgrade) {
+    switch (upgrade.stat) {
+      case "maxHealth":
+        this.maxHealth += upgrade.amount;
+        this.playerHealth += upgrade.amount;
+        this.updateHealthUI();
+        break;
+      case "moveSpeed":
+        this.moveSpeed += SPEED * upgrade.amount;
+        break;
+      case "attackSpeed":
+        this.attackSpeedMulitiplier += upgrade.amount;
+        break;
+      case "damage":
+        this.damageMultiplier += upgrade.amount;
+        break;
+    }
+  }
+
+  private openLevelUp() {
+    const titleText = this.add
+      .text(
+        GAME_WIDTH / 2,
+        100,
+        "Level Up! Choose an Upgrade (" + this.pendingLevelUps + " left)",
+        {
+          fontSize: 48,
+          color: "#ffffff",
+        },
+      )
+      .setOrigin(0.5);
+
+    const choices = PhaserMath.RND.shuffle([...STAT_UPGRADES]).slice(0, 3);
+
+    for (let i = 0; i < choices.length; i++) {
+      const upgrade = choices[i];
+      const cardX = GAME_WIDTH / 2 + (i - 1) * 260;
+
+      const card = this.add.rectangle(
+        cardX,
+        GAME_HEIGHT / 2,
+        CARD_WIDTH,
+        CARD_HEIGHT,
+        CARD_COLOR,
+      );
+
+      const nameText = this.add
+        .text(cardX, GAME_HEIGHT / 2 - 20, upgrade.name, {
+          fontSize: 28,
+          color: "#ffffff",
+        })
+        .setOrigin(0.5);
+      const descriptionText = this.add
+        .text(cardX, GAME_HEIGHT / 2 + 20, upgrade.description, {
+          fontSize: 18,
+          color: "#ffffff",
+        })
+        .setOrigin(0.5);
+
+      card.setInteractive();
+
+      card.on("pointerdown", () => this.pickUpgrade(upgrade));
+
+      this.levelUpObjects.push(card, nameText, descriptionText);
+    }
+
+    this.levelUpObjects.push(titleText);
+  }
+
+  private pickUpgrade(upgrade: StatUpgrade) {
+    this.applyUpgrade(upgrade);
+
+    this.pendingLevelUps -= 1;
+
+    for (const obj of this.levelUpObjects) {
+      obj.destroy();
+    }
+    this.levelUpObjects = [];
+
+    if (this.pendingLevelUps > 0) {
+      this.openLevelUp();
+    } else {
+      this.openShop();
+    }
   }
 }
